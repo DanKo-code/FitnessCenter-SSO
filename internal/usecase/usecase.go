@@ -64,6 +64,8 @@ func (ssoUC *SSOUseCase) SignUp(ctx context.Context, suReq *ssoProtobuf.SignUpRe
 	user.Role = constants.ROLES.Client
 	user.Name = suReq.Name
 	user.Email = suReq.Email
+	user.CreatedTime = time.Now()
+	user.UpdatedTime = time.Now()
 
 	client, err := ssoUC.ssoRepo.CreateUser(user)
 	if err != nil {
@@ -90,6 +92,8 @@ func (ssoUC *SSOUseCase) SignUp(ctx context.Context, suReq *ssoProtobuf.SignUpRe
 	refreshSession.UserId = client.ID
 	refreshSession.RefreshToken = refreshToken
 	refreshSession.FingerPrint = suReq.FingerPrint
+	refreshSession.CreatedTime = time.Now()
+	refreshSession.UpdatedTime = time.Now()
 
 	_, err = ssoUC.ssoRepo.CreateRefreshSession(refreshSession)
 	if err != nil {
@@ -102,6 +106,15 @@ func (ssoUC *SSOUseCase) SignUp(ctx context.Context, suReq *ssoProtobuf.SignUpRe
 	suRes.AccessToken = accessToken
 	suRes.AccessTokenExpiration = strconv.FormatInt(int64(constants.AccessTokenExpiration), 10)
 	suRes.RefreshTokenExpiration = strconv.FormatInt(int64(constants.RefreshTokenExpiration), 10)
+	suRes.User = &ssoProtobuf.User{
+		Id:          user.ID.String(),
+		Name:        user.Name,
+		Email:       user.Email,
+		Role:        user.Role,
+		Photo:       user.Photo,
+		CreatedTime: user.CreatedTime.String(),
+		UpdatedTime: user.UpdatedTime.String(),
+	}
 
 	return suRes, nil
 }
@@ -117,7 +130,14 @@ func (ssoUC *SSOUseCase) SignIn(ctx context.Context, siReq *ssoProtobuf.SignInRe
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(siReq.Password)); err != nil {
+		logrusCustom.LogWithLocation(logrus.ErrorLevel, fmt.Sprintf("Error Invalid Password: %v", err))
 		return nil, ssoErrors.InvalidPassword
+	}
+
+	err = ssoUC.ssoRepo.DeleteRefreshSessionByUserId(user.ID)
+	if err != nil && !errors.Is(err, ssoErrors.RefreshSessionNotFound) {
+		logrusCustom.LogWithLocation(logrus.ErrorLevel, fmt.Sprintf("Error GetUserByEmail: %v", err))
+		return nil, err
 	}
 
 	payload := payload{user.ID, user.Email, user.Role}
@@ -134,10 +154,24 @@ func (ssoUC *SSOUseCase) SignIn(ctx context.Context, siReq *ssoProtobuf.SignInRe
 		return nil, err
 	}
 
+	refreshSession := &models.RefreshSessions{}
+	refreshSession.Id = uuid.New()
+	refreshSession.UserId = user.ID
+	refreshSession.RefreshToken = refreshToken
+	refreshSession.FingerPrint = siReq.FingerPrint
+	refreshSession.CreatedTime = time.Now()
+	refreshSession.UpdatedTime = time.Now()
+
+	_, err = ssoUC.ssoRepo.CreateRefreshSession(refreshSession)
+	if err != nil {
+		logrusCustom.LogWithLocation(logrus.ErrorLevel, fmt.Sprintf("Error CreateRefreshSession: %v", err))
+		return nil, err
+	}
+
 	siRes := &ssoProtobuf.SignInResponse{}
 	siRes.RefreshToken = refreshToken
 	siRes.AccessToken = accessToken
-	siRes.RefreshTokenExpiration = strconv.FormatInt(int64(constants.RefreshTokenExpiration), 10)
+	siRes.AccessTokenExpiration = strconv.FormatInt(int64(constants.AccessTokenExpiration), 10)
 	siRes.RefreshTokenExpiration = strconv.FormatInt(int64(constants.RefreshTokenExpiration), 10)
 	siRes.User = &ssoProtobuf.User{
 		Id:          user.ID.String(),
@@ -158,7 +192,7 @@ func (ssoUC *SSOUseCase) LogOut(ctx context.Context, loReq *ssoProtobuf.LogOutRe
 
 	logOutResponse := &ssoProtobuf.LogOutResponse{}
 
-	err := ssoUC.ssoRepo.DeleteRefreshSession(loReq.RefreshToken)
+	err := ssoUC.ssoRepo.DeleteRefreshSessionByRefreshToken(loReq.RefreshToken)
 	if err != nil {
 		logrusCustom.LogWithLocation(logrus.ErrorLevel, fmt.Sprintf("Error LogOut: %v", err))
 		logOutResponse.Ok = false
@@ -190,8 +224,8 @@ func (ssoUC *SSOUseCase) Refresh(ctx context.Context, refReq *ssoProtobuf.Refres
 		return nil, ssoErrors.InvalidFingerPrint
 	}
 
-	if err := ssoUC.ssoRepo.DeleteRefreshSession(refReq.GetRefreshToken()); err != nil {
-		logrusCustom.LogWithLocation(logrus.ErrorLevel, fmt.Sprintf("Error DeleteRefreshSession: %v", refReq))
+	if err := ssoUC.ssoRepo.DeleteRefreshSessionByRefreshToken(refReq.GetRefreshToken()); err != nil {
+		logrusCustom.LogWithLocation(logrus.ErrorLevel, fmt.Sprintf("Error DeleteRefreshSessionByRefreshToken: %v", refReq))
 		return nil, err
 	}
 
@@ -233,6 +267,8 @@ func (ssoUC *SSOUseCase) Refresh(ctx context.Context, refReq *ssoProtobuf.Refres
 	refreshSessionNew.UserId = user.ID
 	refreshSessionNew.RefreshToken = refreshTokenNew
 	refreshSessionNew.FingerPrint = refReq.GetFingerPrint()
+	refreshSessionNew.CreatedTime = time.Now()
+	refreshSessionNew.UpdatedTime = time.Now()
 
 	_, err = ssoUC.ssoRepo.CreateRefreshSession(refreshSessionNew)
 	if err != nil {
@@ -242,8 +278,17 @@ func (ssoUC *SSOUseCase) Refresh(ctx context.Context, refReq *ssoProtobuf.Refres
 	refreshResponse := &ssoProtobuf.RefreshResponse{}
 	refreshResponse.RefreshToken = refreshTokenNew
 	refreshResponse.AccessToken = accessTokenNew
-	refreshResponse.RefreshTokenExpiration = strconv.FormatInt(int64(constants.RefreshTokenExpiration), 10)
 	refreshResponse.AccessTokenExpiration = strconv.FormatInt(int64(constants.AccessTokenExpiration), 10)
+	refreshResponse.RefreshTokenExpiration = strconv.FormatInt(int64(constants.RefreshTokenExpiration), 10)
+	refreshResponse.User = &ssoProtobuf.User{
+		Id:          user.ID.String(),
+		Name:        user.Name,
+		Email:       user.Email,
+		Role:        user.Role,
+		Photo:       user.Photo,
+		CreatedTime: user.CreatedTime.String(),
+		UpdatedTime: user.UpdatedTime.String(),
+	}
 
 	return refreshResponse, nil
 }

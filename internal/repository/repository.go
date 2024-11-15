@@ -10,6 +10,7 @@ type SSORepository interface {
 	GetUserById(id uuid.UUID) (*models.User, error)
 	CreateUser(user *models.User) (*models.User, error)
 	CreateRefreshSession(refreshSessions *models.RefreshSessions) (*models.RefreshSessions, error)
-	DeleteRefreshSession(refreshToken string) error
+	DeleteRefreshSessionByRefreshToken(refreshToken string) error
+	DeleteRefreshSessionByUserId(userId uuid.UUID) error
 	GetRefreshSession(refreshToken string) (*models.RefreshSessions, error)
 }

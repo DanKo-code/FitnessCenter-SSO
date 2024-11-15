@@ -9,5 +9,6 @@ var (
 	InvalidRefreshToken = errors.New("invalid refresh token")
 	InvalidFingerPrint  = errors.New("invalid fingerprint")
 
-	UserNotFound = errors.New("user not found")
+	UserNotFound           = errors.New("user not found")
+	RefreshSessionNotFound = errors.New("refresh session not found")
 )

@@ -4,6 +4,8 @@ github.com/DanKo-code/FitnessCenter-Protobuf v0.1.3 h1:GJwVpH6AqUScmnRkB1p3cWOXX
 github.com/DanKo-code/FitnessCenter-Protobuf v0.1.3/go.mod h1:/Swu1W/3S1bdwWiZx3hy52uvpLKWoyNCiZ8thKnK6K0=
 github.com/DanKo-code/FitnessCenter-Protobuf v0.1.4 h1:iZCQ6iA9R5Q9lrJeJiAT0R3gEK5VcQj4VKCCowIOl1Q=
 github.com/DanKo-code/FitnessCenter-Protobuf v0.1.4/go.mod h1:/Swu1W/3S1bdwWiZx3hy52uvpLKWoyNCiZ8thKnK6K0=
+github.com/DanKo-code/FitnessCenter-Protobuf v0.1.5 h1:lk1UTi07RG7d7kuyeMm1OPNbFMGxYXtOT6WRZ4F07ks=
+github.com/DanKo-code/FitnessCenter-Protobuf v0.1.5/go.mod h1:/Swu1W/3S1bdwWiZx3hy52uvpLKWoyNCiZ8thKnK6K0=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
