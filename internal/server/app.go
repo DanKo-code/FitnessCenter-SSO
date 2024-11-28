@@ -4,11 +4,10 @@ import (
 	ssoGRPC "SSO/internal/delivery/grpc"
 	"SSO/internal/repository/postgres"
 	"SSO/internal/usecase"
-	logrusCustom "SSO/pkg/logger"
+	"SSO/pkg/logger"
 	"fmt"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
-	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"net"
 	"os"
@@ -21,8 +20,6 @@ type AppGRPC struct {
 }
 
 func NewAppGRPC() *AppGRPC {
-
-	logrusCustom.LogWithLocation(logrus.InfoLevel, fmt.Sprintf("Entered NewApp function"))
 
 	db := initDB()
 
@@ -37,23 +34,21 @@ func NewAppGRPC() *AppGRPC {
 
 func (app *AppGRPC) Run(port string) error {
 
-	logrusCustom.LogWithLocation(logrus.InfoLevel, fmt.Sprintf("Entered Run function"))
-
 	app.gRPCServer = grpc.NewServer()
 
 	ssoGRPC.Register(app.gRPCServer, app.useCase)
 
 	listen, err := net.Listen(os.Getenv("APP_GRPC_PROTOCOL"), ":"+port)
 	if err != nil {
-		logrusCustom.LogWithLocation(logrus.ErrorLevel, fmt.Sprintf("Failed to listen: %v", err))
+		logger.ErrorLogger.Printf("Failed to listen: %v", err)
 		return err
 	}
 
-	logrusCustom.LogWithLocation(logrus.InfoLevel, fmt.Sprintf("Starting gRPC server on port %s", port))
+	logger.InfoLogger.Printf("Starting gRPC server on port %s", port)
 
 	go func() {
 		if err = app.gRPCServer.Serve(listen); err != nil {
-			logrusCustom.LogWithLocation(logrus.FatalLevel, fmt.Sprintf("Failed to serve: %v", err))
+			logger.FatalLogger.Fatalf("Failed to serve: %v", err)
 		}
 	}()
 
@@ -62,15 +57,13 @@ func (app *AppGRPC) Run(port string) error {
 
 	<-quit
 
-	logrusCustom.LogWithLocation(logrus.InfoLevel, fmt.Sprintf("stopping gRPC server %s", port))
+	logger.InfoLogger.Printf("stopping gRPC server %s", port)
 	app.gRPCServer.GracefulStop()
 
 	return nil
 }
 
 func initDB() *sqlx.DB {
-
-	logrusCustom.LogWithLocation(logrus.InfoLevel, "Entered initDB function")
 
 	dsn := fmt.Sprintf(
 		"host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
@@ -84,10 +77,10 @@ func initDB() *sqlx.DB {
 
 	db, err := sqlx.Connect(os.Getenv("DB_DRIVER"), dsn)
 	if err != nil {
-		logrusCustom.LogWithLocation(logrus.FatalLevel, fmt.Sprintf("Database connection failed: %s", err))
+		logger.FatalLogger.Printf("Database connection failed: %s", err)
 	}
 
-	logrusCustom.LogWithLocation(logrus.InfoLevel, "Successfully connected to db")
+	logger.InfoLogger.Printf("Successfully connected to db")
 
 	return db
 }

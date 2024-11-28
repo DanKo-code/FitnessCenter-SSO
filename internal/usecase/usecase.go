@@ -5,14 +5,12 @@ import (
 	"SSO/internal/models"
 	"SSO/internal/repository"
 	"SSO/internal/ssoErrors"
-	logrusCustom "SSO/pkg/logger"
+	"SSO/pkg/logger"
 	"context"
 	"errors"
-	"fmt"
 	ssoProtobuf "github.com/DanKo-code/FitnessCenter-Protobuf/gen/FitnessCenter.protobuf.sso"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/bcrypt"
 	"os"
 	"strconv"
@@ -42,22 +40,20 @@ type payload struct {
 
 func (ssoUC *SSOUseCase) SignUp(ctx context.Context, suReq *ssoProtobuf.SignUpRequest) (*ssoProtobuf.SignUpResponse, error) {
 
-	logrusCustom.LogWithLocation(logrus.InfoLevel, fmt.Sprintf("Entered SignUp UseCase with SignUpRequest: %v", suReq))
-
 	user := &models.User{}
 
 	_, err := ssoUC.ssoRepo.GetUserByEmail(suReq.Email)
 	if err != nil && !errors.Is(err, ssoErrors.UserNotFound) {
 		return nil, err
 	} else if err == nil {
-		logrusCustom.LogWithLocation(logrus.ErrorLevel, fmt.Sprintf("Error hGetUserByEmail: %v", ssoErrors.UserAlreadyExists))
+		logger.ErrorLogger.Fatalf("Error hGetUserByEmail: %v", ssoErrors.UserAlreadyExists)
 		return nil, ssoErrors.UserAlreadyExists
 	}
 
 	user.ID = uuid.New()
 	hashedPassword, err := HashPassword(suReq.Password)
 	if err != nil {
-		logrusCustom.LogWithLocation(logrus.ErrorLevel, fmt.Sprintf("Error hashing password: %v", err))
+		logger.ErrorLogger.Printf("Error hashing password: %v", err)
 		return nil, err
 	}
 	user.PasswordHash = hashedPassword
@@ -77,13 +73,13 @@ func (ssoUC *SSOUseCase) SignUp(ctx context.Context, suReq *ssoProtobuf.SignUpRe
 	var jwtSecret = []byte(os.Getenv("JWT_SECRET"))
 	accessToken, err := GenerateAccessToken(payload, jwtSecret)
 	if err != nil {
-		logrusCustom.LogWithLocation(logrus.ErrorLevel, fmt.Sprintf("Error GenerateAccessToken: %v", err))
+		logger.ErrorLogger.Printf("Error GenerateAccessToken: %v", err)
 		return nil, err
 	}
 
 	refreshToken, err := GenerateRefreshToken(client.ID, jwtSecret)
 	if err != nil {
-		logrusCustom.LogWithLocation(logrus.ErrorLevel, fmt.Sprintf("Error GenerateRefreshToken: %v", err))
+		logger.ErrorLogger.Printf("Error GenerateRefreshToken: %v", err)
 		return nil, err
 	}
 
@@ -97,7 +93,7 @@ func (ssoUC *SSOUseCase) SignUp(ctx context.Context, suReq *ssoProtobuf.SignUpRe
 
 	_, err = ssoUC.ssoRepo.CreateRefreshSession(refreshSession)
 	if err != nil {
-		logrusCustom.LogWithLocation(logrus.ErrorLevel, fmt.Sprintf("Error CreateRefreshSession: %v", err))
+		logger.ErrorLogger.Printf("Error CreateRefreshSession: %v", err)
 		return nil, err
 	}
 
@@ -121,22 +117,20 @@ func (ssoUC *SSOUseCase) SignUp(ctx context.Context, suReq *ssoProtobuf.SignUpRe
 
 func (ssoUC *SSOUseCase) SignIn(ctx context.Context, siReq *ssoProtobuf.SignInRequest) (*ssoProtobuf.SignInResponse, error) {
 
-	logrusCustom.LogWithLocation(logrus.InfoLevel, fmt.Sprintf("Entered SignIn UseCase with SignInRequest: %v", siReq))
-
 	user, err := ssoUC.ssoRepo.GetUserByEmail(siReq.Email)
 	if err != nil {
-		logrusCustom.LogWithLocation(logrus.ErrorLevel, fmt.Sprintf("Error GetUserByEmail: %v", err))
+		logger.ErrorLogger.Printf("Error GetUserByEmail: %v", err)
 		return nil, err
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(siReq.Password)); err != nil {
-		logrusCustom.LogWithLocation(logrus.ErrorLevel, fmt.Sprintf("Error Invalid Password: %v", err))
+		logger.ErrorLogger.Printf("Error Invalid Password: %v", err)
 		return nil, ssoErrors.InvalidPassword
 	}
 
 	err = ssoUC.ssoRepo.DeleteRefreshSessionByUserId(user.ID)
 	if err != nil && !errors.Is(err, ssoErrors.RefreshSessionNotFound) {
-		logrusCustom.LogWithLocation(logrus.ErrorLevel, fmt.Sprintf("Error GetUserByEmail: %v", err))
+		logger.ErrorLogger.Printf("Error GetUserByEmail: %v", err)
 		return nil, err
 	}
 
@@ -144,13 +138,13 @@ func (ssoUC *SSOUseCase) SignIn(ctx context.Context, siReq *ssoProtobuf.SignInRe
 	var jwtSecret = []byte(os.Getenv("JWT_SECRET"))
 	accessToken, err := GenerateAccessToken(payload, jwtSecret)
 	if err != nil {
-		logrusCustom.LogWithLocation(logrus.ErrorLevel, fmt.Sprintf("Error GenerateAccessToken: %v", err))
+		logger.ErrorLogger.Printf("Error GenerateAccessToken: %v", err)
 		return nil, err
 	}
 
 	refreshToken, err := GenerateRefreshToken(user.ID, jwtSecret)
 	if err != nil {
-		logrusCustom.LogWithLocation(logrus.ErrorLevel, fmt.Sprintf("Error GenerateRefreshToken: %v", err))
+		logger.ErrorLogger.Printf("Error GenerateRefreshToken: %v", err)
 		return nil, err
 	}
 
@@ -164,7 +158,7 @@ func (ssoUC *SSOUseCase) SignIn(ctx context.Context, siReq *ssoProtobuf.SignInRe
 
 	_, err = ssoUC.ssoRepo.CreateRefreshSession(refreshSession)
 	if err != nil {
-		logrusCustom.LogWithLocation(logrus.ErrorLevel, fmt.Sprintf("Error CreateRefreshSession: %v", err))
+		logger.ErrorLogger.Printf("Error CreateRefreshSession: %v", err)
 		return nil, err
 	}
 
@@ -188,13 +182,11 @@ func (ssoUC *SSOUseCase) SignIn(ctx context.Context, siReq *ssoProtobuf.SignInRe
 
 func (ssoUC *SSOUseCase) LogOut(ctx context.Context, loReq *ssoProtobuf.LogOutRequest) (*ssoProtobuf.LogOutResponse, error) {
 
-	logrusCustom.LogWithLocation(logrus.InfoLevel, fmt.Sprintf("Entered LogOut UseCase with LogOutRequest: %v", loReq))
-
 	logOutResponse := &ssoProtobuf.LogOutResponse{}
 
 	err := ssoUC.ssoRepo.DeleteRefreshSessionByRefreshToken(loReq.RefreshToken)
 	if err != nil {
-		logrusCustom.LogWithLocation(logrus.ErrorLevel, fmt.Sprintf("Error LogOut: %v", err))
+		logger.ErrorLogger.Printf("Error LogOut: %v", err)
 		logOutResponse.Ok = false
 		return logOutResponse, err
 	}
@@ -206,11 +198,9 @@ func (ssoUC *SSOUseCase) LogOut(ctx context.Context, loReq *ssoProtobuf.LogOutRe
 
 func (ssoUC *SSOUseCase) Refresh(ctx context.Context, refReq *ssoProtobuf.RefreshRequest) (*ssoProtobuf.RefreshResponse, error) {
 
-	logrusCustom.LogWithLocation(logrus.InfoLevel, fmt.Sprintf("Entered Refresh UseCase with RefreshRequest: %v", refReq))
-
 	token, err := VerifyRefreshToken(refReq.RefreshToken)
 	if err != nil {
-		logrusCustom.LogWithLocation(logrus.ErrorLevel, fmt.Sprintf("Error VerifyRefreshToken: %v", err))
+		logger.ErrorLogger.Printf("Error VerifyRefreshToken: %v", err)
 		return nil, err
 	}
 
@@ -220,12 +210,12 @@ func (ssoUC *SSOUseCase) Refresh(ctx context.Context, refReq *ssoProtobuf.Refres
 	}
 
 	if refReq.GetFingerPrint() != refreshSession.FingerPrint {
-		logrusCustom.LogWithLocation(logrus.ErrorLevel, fmt.Sprintf("Error not valid FingerPrint: %v", refReq))
+		logger.ErrorLogger.Printf("Error not valid FingerPrint: %v", refReq)
 		return nil, ssoErrors.InvalidFingerPrint
 	}
 
 	if err := ssoUC.ssoRepo.DeleteRefreshSessionByRefreshToken(refReq.GetRefreshToken()); err != nil {
-		logrusCustom.LogWithLocation(logrus.ErrorLevel, fmt.Sprintf("Error DeleteRefreshSessionByRefreshToken: %v", refReq))
+		logger.ErrorLogger.Printf("Error DeleteRefreshSessionByRefreshToken: %v", refReq)
 		return nil, err
 	}
 
@@ -234,11 +224,11 @@ func (ssoUC *SSOUseCase) Refresh(ctx context.Context, refReq *ssoProtobuf.Refres
 		if id, ok := claims["id"].(string); ok {
 			userId, err = uuid.Parse(id)
 			if err != nil {
-				logrusCustom.LogWithLocation(logrus.ErrorLevel, fmt.Sprintf("Error uuid.Parse: %v", err))
+				logger.ErrorLogger.Printf("Error uuid.Parse: %v", err)
 				return nil, err
 			}
 		} else {
-			logrusCustom.LogWithLocation(logrus.ErrorLevel, fmt.Sprintf("Invalid RefreshToken"))
+			logger.ErrorLogger.Printf("Invalid RefreshToken")
 			return nil, ssoErrors.InvalidRefreshToken
 		}
 	}
@@ -252,13 +242,13 @@ func (ssoUC *SSOUseCase) Refresh(ctx context.Context, refReq *ssoProtobuf.Refres
 
 	accessTokenNew, err := GenerateAccessToken(payload, []byte(os.Getenv("JWT_SECRET")))
 	if err != nil {
-		logrusCustom.LogWithLocation(logrus.ErrorLevel, fmt.Sprintf("Error GenerateAccessToken: %v", err))
+		logger.ErrorLogger.Printf("Error GenerateAccessToken: %v", err)
 		return nil, err
 	}
 
 	refreshTokenNew, err := GenerateRefreshToken(user.ID, []byte(os.Getenv("JWT_SECRET")))
 	if err != nil {
-		logrusCustom.LogWithLocation(logrus.ErrorLevel, fmt.Sprintf("Error GenerateRefreshToken: %v", err))
+		logger.ErrorLogger.Printf("Error GenerateRefreshToken: %v", err)
 		return nil, err
 	}
 
