@@ -11,4 +11,6 @@ var (
 
 	UserNotFound           = errors.New("user not found")
 	RefreshSessionNotFound = errors.New("refresh session not found")
+
+	VoidUserData = errors.New("void userData")
 )

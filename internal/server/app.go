@@ -4,11 +4,13 @@ import (
 	ssoGRPC "SSO/internal/delivery/grpc"
 	"SSO/internal/repository/postgres"
 	"SSO/internal/usecase"
+	"SSO/internal/usecase/sso_usecase"
 	"SSO/pkg/logger"
 	"fmt"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"net"
 	"os"
 	"os/signal"
@@ -16,27 +18,35 @@ import (
 
 type AppGRPC struct {
 	gRPCServer *grpc.Server
-	useCase    usecase.UseCase
+	ssoUseCase usecase.UseCase
+	userClient *grpc.ClientConn
 }
 
-func NewAppGRPC() *AppGRPC {
+func NewAppGRPC() (*AppGRPC, error) {
 
 	db := initDB()
 
 	repository := postgres.NewSSORepository(db)
 
-	useCase := usecase.NewSSOUseCase(repository)
+	connUer, err := grpc.NewClient(os.Getenv("USER_SERVICE_PORT"), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		logger.ErrorLogger.Printf("failed to connect to User server: %v", err)
+		return nil, err
+	}
+
+	useCase := sso_usecase.NewSSOUseCase(repository, connUer)
 
 	return &AppGRPC{
-		useCase: useCase,
-	}
+		ssoUseCase: useCase,
+		userClient: connUer,
+	}, nil
 }
 
 func (app *AppGRPC) Run(port string) error {
 
 	app.gRPCServer = grpc.NewServer()
 
-	ssoGRPC.Register(app.gRPCServer, app.useCase)
+	ssoGRPC.Register(app.gRPCServer, app.ssoUseCase)
 
 	listen, err := net.Listen(os.Getenv("APP_GRPC_PROTOCOL"), ":"+port)
 	if err != nil {

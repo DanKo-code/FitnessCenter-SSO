@@ -16,7 +16,10 @@ func main() {
 
 	logger.InfoLogger.Printf("Successfully loaded environment variables")
 
-	appGRPC := server.NewAppGRPC()
+	appGRPC, err := server.NewAppGRPC()
+	if err != nil {
+		logger.FatalLogger.Fatalf(fmt.Sprintf("Error initializing app grpc: %s", err))
+	}
 
 	err = appGRPC.Run(os.Getenv("APP_PORT"))
 	if err != nil {

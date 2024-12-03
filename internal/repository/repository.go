@@ -2,15 +2,13 @@ package repository
 
 import (
 	"SSO/internal/models"
+	"context"
 	"github.com/google/uuid"
 )
 
 type SSORepository interface {
-	GetUserByEmail(email string) (*models.User, error)
-	GetUserById(id uuid.UUID) (*models.User, error)
-	CreateUser(user *models.User) (*models.User, error)
-	CreateRefreshSession(refreshSessions *models.RefreshSessions) (*models.RefreshSessions, error)
-	DeleteRefreshSessionByRefreshToken(refreshToken string) error
-	DeleteRefreshSessionByUserId(userId uuid.UUID) error
-	GetRefreshSession(refreshToken string) (*models.RefreshSessions, error)
+	CreateRefreshSession(ctx context.Context, refreshSessions *models.RefreshSessions) (*models.RefreshSessions, error)
+	DeleteRefreshSessionByRefreshToken(ctx context.Context, refreshToken string) error
+	DeleteRefreshSessionByUserId(ctx context.Context, userId uuid.UUID) error
+	GetRefreshSession(ctx context.Context, refreshToken string) (*models.RefreshSessions, error)
 }
