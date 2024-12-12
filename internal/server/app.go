@@ -87,7 +87,7 @@ func initDB() *sqlx.DB {
 
 	db, err := sqlx.Connect(os.Getenv("DB_DRIVER"), dsn)
 	if err != nil {
-		logger.FatalLogger.Printf("Database connection failed: %s", err)
+		logger.FatalLogger.Fatalf("Database connection failed: %s", err)
 	}
 
 	logger.InfoLogger.Printf("Successfully connected to db")
