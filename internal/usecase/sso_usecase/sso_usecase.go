@@ -37,9 +37,9 @@ func NewSSOUseCase(ssoRepo repository.SSORepository, userClient *grpc.ClientConn
 }
 
 type payload struct {
-	clientId uuid.UUID
-	email    string
-	role     string
+	userId uuid.UUID
+	email  string
+	role   string
 }
 
 func (ssoUC *SSOUseCase) SignUp(ctx context.Context, cmd *dtos.SignUpRequestCommand) (*dtos.SignUpResponseCommand, error) {
@@ -350,10 +350,9 @@ func (ssoUC *SSOUseCase) Refresh(ctx context.Context, cmd *dtos.RefreshRequestCo
 
 func GenerateAccessToken(payload payload, jwtSecret []byte) (string, error) {
 	claims := jwt.MapClaims{
-		"id":    payload.clientId,
-		"email": payload.email,
-		"role":  payload.role,
-		"exp":   time.Now().Add(constants.AccessTokenExpiration).Unix(),
+		"user_id": payload.userId,
+		"role":    payload.role,
+		"exp":     time.Now().Add(constants.AccessTokenExpiration).Unix(),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
