@@ -48,7 +48,7 @@ func (app *AppGRPC) Run(port string) error {
 
 	ssoGRPC.Register(app.gRPCServer, app.ssoUseCase)
 
-	listen, err := net.Listen(os.Getenv("APP_GRPC_PROTOCOL"), ":"+port)
+	listen, err := net.Listen(os.Getenv("APP_GRPC_PROTOCOL"), port)
 	if err != nil {
 		logger.ErrorLogger.Printf("Failed to listen: %v", err)
 		return err
